@@ -8,6 +8,7 @@ IoTrigger runs on a router providing connectivity to a set of IoT devices to tes
 HOW TO RUN THE SOFTWARE
 ## File Structure 
 
+The code needs Mon(IoT)r installed. Please download and install the software here: https://moniotrlab.ccis.neu.edu/tools/
 Each subdirectory shows samples for running the functionality, getting destinations from the pcap files, classifying  the destinations and blocking the functionality.
 
 - `run_iotrigger.sh` - Code for runnig IoTrigger.
