@@ -6,13 +6,6 @@ In our case the MONIOTR_DIR is /opt/moniotr
 
 Everything in this guide starting with the $ needs to be substituted with the proper value
 
-
-NETWORKS are:
-	-iotlab_fabio (ALREADY FULL)
-	-iotlab_fabio1
-	-iotlab_fabio2
-
-	Password for all the networks is: iotlab_fabio
 --------------------------------------
 STEP ZERO: Connecting the device and the smart plug
 --------------------------------------
