@@ -16,4 +16,5 @@ Each subdirectory shows samples for running the functionality, getting destinati
 - `get_dest.sh` - Code for running the functionality and getting the destinations.
 - `classify_dest.sh` - Code for classifying the destinations.
 - `blocker.sh` - Code for blocking the destinations and creating the IoTrim list. 
-
+- `blocker_all.sh` - Code for blocking all the destinations in a file. Useful for blocking all the essential/non-essential destinations and checking the IoTrim list correctness. 
+- `blocker_manual.sh` - Code guiding the user to the manual check of destinations. It blocks destinations one-by-one and asks the user to execute the action and give feedback on the result.

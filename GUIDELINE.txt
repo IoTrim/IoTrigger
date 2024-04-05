@@ -1,0 +1,356 @@
+In all the guideline, the IOTRIM_DIR is where the main scripts are located:
+In our case the IOTRIM_DIR is /home/fabio/Desktop/iotrim/fabio-iotrigger
+
+In all the guideline the MONIOTR_DIR is where the moniotr is located:
+In our case the MONIOTR_DIR is /opt/moniotr
+
+Everything in this guide starting with the $ needs to be substituted with the proper value
+
+
+NETWORKS are:
+	-iotlab_fabio (ALREADY FULL)
+	-iotlab_fabio1
+	-iotlab_fabio2
+
+	Password for all the networks is: iotlab_fabio
+--------------------------------------
+STEP ZERO: Connecting the device and the smart plug
+--------------------------------------
+
+First of all you need to connect the smart plug:
+	-Add it to the TAPO app and to one of the networks
+	-Edit the file $MONIOTR_DIR/etc/devices.txt and a line with the MAC and NAME of the new device
+		The name will be of the form: tapo-plugXX
+		You can edit the file with:
+			sudo nano $MONIOTR_DIR/etc/devices.txt
+		WARNING: don't leave empty lines in the file, neither tabs or spaces
+
+Connect the device and enable the MONIOTR software for it
+In order to do so:
+	-Connect the device to one of the Wi-Fis where moniotr is running. Use the proper smart app and use one of the available networks
+		The network can be different between plug and device
+	-Edit the file $MONIOTR_DIR/etc/devices.txt and a line with the MAC and NAME of the new device
+		You can edit the file with:
+			sudo nano $MONIOTR_DIR/etc/devices.txt
+		WARNING: don't leave empty lines in the file, neither tabs or spaces
+		
+	-Restart moniotr so that the device is getting configured for capturing. Do this with command:
+		 sudo $MONIOTR_DIR/bin/moniotr-ctrl restart
+	WARNING: This removes connectivity for a few seconds
+		DO THIS AS LESS TIMES AS POSSIBLE (setup more devices at once, update the devices.txt then run restart)
+		
+
+
+--------------------------------------
+Step 1: Build the experiment file
+--------------------------------------
+	All experiment files are in the $IOTRIM_DIR/experiments folder
+	From this moment we will refer to this file as $EXP_FILENAME (you can give the same name as the device), that needs to be placed in the $IOTRIM_DIR/experiments folder!
+
+	Take inspiration from other experiment files (e.g. copy from another one and edit)
+		Use the command:
+			cp $IOTRIM_DIR/experiments/$EXAMPLE_EXPERIMENT $IOTRIM_DIR/experiments/$EXP_FILENAME
+	
+	As suggestions, give the EXP_FILENAME the same name as the device
+	
+	Each line in the experiment file contains:
+	DEV_NAME;PLUG_NAME;ONOFF;EXP_NAME;CROP(DX*DY+X+Y);PHONE;PACKAGE;NETWORK;SLEEP1;SLEEP2;FUNCTION_1;FUNCTION_2;FUNCTION_3;....;FUNCTION_N
+	
+	-DEV_NAME is the Device name
+	-PLUG_NAME is the name of the SMART PLUG controlling the device
+	-ONOFF is a boolean (0 or 1) to decide to turn the device OFF/ON before the experiment or not
+	-EXP_NAME is the name given to the experiment
+	-CROP is the area to cut in the screenshot that should match if activity is properly executed.
+		CROP FORMAT: deltaX*deltaY+X0+Y0 (deltaX is size in X, deltaY is size in Y, starting point has X0,Y0 coordinates)
+		THIS WILL BE NEEDED IN STEP 4
+	-PHONE is the name of the android phone (e.g. nexus5x4). In the $IOTRIM_DIR/ids be sure there is a file named as the phone name, containing the phone serial
+	-PACKAGE is the package of the android app
+		Find the package with the command:
+			adb -s $DEVICE_SERIAL shell cmd package list packages | grep "$KEYWORD"
+			Where $DEVICE_SERIAL is the serial of the phone (e.g. 936AY07C74), find the serial in the folder $IOTRIM_DIR/ids/$PHONE
+			And $KEYWORD is a keyword to filter all packages (e.g. app name)
+			If you don't find the package, you can find the package name going in the play store, seach for the app and "share": you should find the package in the URL (com.xxxxx)
+	-NETWORK is the network to use in the phone for communicating with the device. The phone should use the external network for the devices, to trigger external communication.
+		If the device can only work with local connectivity, use "local" as network, and the system will get the local network the device is connected to.
+		Default value should be "external"
+	-SLEEP1 is the amount of time to sleep BEFORE the activity is executed
+	-SLEEP2 is the amount of time to sleep AFTER the activity is executed
+	-FUNCTION_1 to FUNCTION_N are the single clicks/activities to execute to trigger the device, usually attached to android "adb shell" commands e.g. swipe, tap
+
+	Example:
+		kasa-bulb;tapo-plug29;1;android_lan_off;170x170+350+440;nexus5x2;com.tplink.iot;20s;25s;tap 456 527;swipe 920 375 920 1100;
+
+
+	WARNING!!: 
+		-In the experiment file conclude each line with a ;
+		-Leave only one empty line at the end of the experiment file
+		-Be sure that at the end of function_N, the pointer is not clicking in the CROP_AREA, otherwise it is captured in the screenshot
+			(in this case, add a TAP in the app in a place not in the CROP which will not cause problems in the app)
+			
+	FUNCTION_1 to FUNCTION_N contains the execution of the activity:	
+	Activity example are:
+		TAP:	This is used to click in the screen.
+				In this case FUNCTION should be "tap x y" where (x,y) is the point to click in the screen
+		SWIPE: 	This is used to make a swipe in the screen. 
+				In this case FUNCTION should be "swipe x0 y0 x1 y1" where (x0,y0) and (x1,y1) are the start and end point of the swipe
+		SPEAK: 	If the package is "amazon", "echo", "google" or "siri", the speak script is called.
+				In this case FUNCTION should be the name of the audio file. The audio file should be placed in the folder $IOTRIM_DIR/speak
+	
+	In this step you need to catch all the coordinates that the android app should click to trigger the function of the device
+	You will also need to get the coordinate of the crop area for Screenshot checking, to be sure that the activity has been executed correctly.
+	Be sure you extract a crop that is unique if the activity succeed (for more, see step 4)
+	
+--------------------------------------
+Step 2: Collect all destinations
+--------------------------------------
+
+	In this step we extract all the destination contacted by the device during its functioning.
+	
+	We will use the script $IOTRIM_DIR/get_dest.sh
+	The script collects all the destinations from the device while we trigger the functionality one by one
+	
+	---SCRIPT EDITING---
+	There should be no need of specific modifications of the script, if experiment file is properly set up.
+	
+	WARNING: In some cases there is the need of having longer sleep times in the app, since some content needs to load.
+	In such case, adjust the sleep times in the experiment file, and if it is not enough, you can create specific rules for the device in the
+	get_dests file
+	
+	
+	---EXECUTION---
+	Place the terminal in the $IOTRIM_DIR dir (with cd command)
+		cd $IOTRIM_DIR
+	You can call the script to be executed ONCE as follows:
+		sudo ./get_dest.sh $EXP_FILENAME
+	
+	You can call multiple execution of the script with:
+		ADVISE: open a TMUX session so that when the ssh is closed, the script keep going
+			tmux new -s $DEVICE_NAME
+		If you already created the TMUX session, do:
+			tmux attach -t $DEVICE_NAME to open it back
+			Then cd to the $IOTRIM_DIR and run:
+				sudo ./multi_get_dest.sh $EXP_FILENAME $NUMBER_ITERATIONS
+		
+	!! We advise to execute the script atleast 30 times
+	
+--------------------------------------
+Step 3: [MANUAL] Analyze the destinations list
+--------------------------------------
+
+	In this step, we need to process all the destinations
+	We will use the script $IOTRIM_DIR/classify_dest.sh
+	Keep the script as is, since it properly work for all devices
+	
+	---EXECUTION---
+	Place the terminal in the $IOTRIM_DIR dir (with cd command):
+		cd $IOTRIM_DIR
+	Then run the script with:
+		sudo ./classify_dest.sh $EXP_FILENAME
+	
+	The script will create different files in the folder $MONIOTR_DIR/traffic/tagged/$DEVICE_NAME
+	
+	
+	Manually get the all FREQUENT destinations in the file: $MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/rec_dest_unique
+	Compare the destinations with those NOT FREQUENT in $MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/unrec_dest_unique
+	
+	---AGGREGATING DESTINATIONS---
+	Check for pattern and update the file in the FREQUENT dest file $MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/rec_dest_unique with all the destinations that can be useful.
+	E.g. if in recurrent or non-recurrent destinations you have 
+		a40832.googlevideo.com
+		a492104.googlevideo.com
+		a49902583.googlevideo.com
+	Then you can write *.googlevideo.com in the FREQUENT file
+	
+	The same can be done with the IPs appearing in the files, instead of domains
+	
+	
+	DO NOT AGGREGATE if instead the domain reminds to the device brand
+	E.g. on an amazon echo
+		api.amazon.com
+		amazonalexa.amazon.com
+		avs14-amaz.amazon.com
+	SHOULD BE LEFT UNAGGREGATED. Since they are FIRST PARTY, some of these domains may be essential and some may not.
+	
+	
+	At the end of this step you need to have all the destinations to analyze in the file $MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/rec_dest_unique
+	
+--------------------------------------
+Step 4: SCREENSHOT/PROBE Setup
+--------------------------------------
+
+	---SCREENSHOT---
+	
+	After blocking the destination, the script should be able to check that the activities are executed.
+	In order to do so, we need to prepare the screenshot stating the activity was successfull executed.
+	For example a light bulb may have a button in the APP in which it results it is ON or OFF.
+	Each screenshot will be named $DEVICE_NAME.$EXP_NAME.png and stored in the $IOTRIM_DIR/captures/$DEVICE_NAME/reference/$PHONE folder
+	
+	In cases in which the device can be either ON and OFF after a successfull activity, 
+	you can use two screenshots and name them as:
+			$DEVICE_NAME.$EXP_NAME.png and $DEVICE_NAME.$EXP_NAME2.png
+			i.e. one screenshot showing the device as OFF, one as ON. Check the examples for clearness
+	
+
+	You can use the $IOTRIM_DIR/get_screenshot.sh to do this:
+		1. Reach the required state in the app:
+			Go to the desired state in the screenshot, be sure the pointer is not clicking the button (e.g. the RED POINT IN THE PHONE not in the desired crop area) 
+		2. Setup the CROP area in the experiment file. By inspecting the coordinates in the phone, take an area so to collect only the part that uniquely identifies the proper execution of the activity
+			The CROP details should be put in the $IOTRIM_DIR/experiments/$DEVICE_NAME file rows.
+			The CROP format is: deltaX*deltaY+X0+Y0 (deltaX is size in X, deltaY is size in Y, starting point has X0,Y0 coordinates)
+				Get the coordinates in the phone and adjust it.
+		3. Run the script:
+			Place the terminal in the $IOTRIM_DIR with cd command and call
+			sudo $IOTRIM_DIR/get_screenshot.sh $DEVICE_NAME
+		
+	
+	You can check the results of the script:
+		The screenshot will be stored in the $IOTRIM_DIR/captures/$DEVICE_NAME/reference/$PHONE folder
+		There will be also an example of the CROP, so that you can check that the cropped area matches the proper one
+	
+	
+	---SPEAKERS/TV---
+	For smart speakers or smart TVs, the screenshot can not state that the activity was successfull or not.
+	For this reason, we created a specific script that is called to check the activity execution from network traffic.
+	The script is personalized for each device to study.
+
+	
+	
+--------------------------------------
+Step 5: Automatically Blocking the destinations
+--------------------------------------
+
+	In this step we will proceed blocking the destinations one by one for the device, execute the function through the app/speaker
+	and then check that the function is executed correctly
+	
+	We will use the script in $IOTRIM_DIR/blocker.sh
+	
+	---SCRIPT EDITING---
+	As for the get_dest.sh script, we will not need to edit the file
+
+	WARNING: In some cases there is the need of having longer sleep times in the app, since some content needs to load.
+	In such case, adjust the sleep times in the experiment file, and if it is not enough, you can create specific rules for the device in the
+	blocker.sh file, as it is done in the example
+	
+	
+	---EXECUTION---
+	Place the terminal in the $IOTRIM_DIR dir (with cd command)
+		cd $IOTRIM_DIR
+	
+	ADVISE: open a TMUX session so that when the ssh is closed, the script keep going
+			tmux new -s $DEVICE_NAME
+		If you already created the TMUX session, do:
+			tmux attach -t $DEVICE_NAME
+	
+	You can call the script to be executed once as follows:		
+		sudo ./blocker.sh $EXP_FILENAME
+		
+	You can call multiple execution of the script with:
+		sudo ./multi_blocker.sh $EXP_FILENAME $NUMBER_ITERATIONS
+		
+	!! We advise to execute the script atleast 30 times
+	
+	---OUTCOME---
+	
+	The outcome of this script will be in the file:
+		$MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/$EXP_NAME/res-block
+	
+	Each line will present the outcome of the execution when blocking the destination:
+		-ok: means the destination is non-essential (the execution is successful)
+		-failed: means the destination is essential (the execution is unsuccessful)
+	
+	Manually process the res-block file to state what destination is essential or not, averaging the results over the multiple executions
+	WARNING: if all destinations give failed, maybe the SCREENSHOT comparison or the app function is not working properly, investigate!
+	
+--------------------------------------
+Step 6: [Manual] Blocking the destinations one-by-one with manual supervision
+--------------------------------------
+	To have a 100% confirmation of the automated outcome, you can perform a manual blocker.
+	We will use the script in $IOTRIM_DIR/blocker_manual.sh
+	
+	---EXECUTION---
+	Place the terminal in the $IOTRIM_DIR dir (with cd command)
+		cd $IOTRIM_DIR
+	
+	You can call the script as follows:
+		sudo ./blocker_manual.sh $EXP_FILENAME
+		
+	The script will block the destinations one-by-one, then ask in the console prompt to follow some steps.
+	In the case of smart speakers. the activity is executed automatically after you unlock the prompt
+	In the case of other devices, you need to trigger the activity using the phone, manually.
+	
+	The script will then ask the user if the activity was successful or not. Write OK if activity was successful, NO if it was not
+	In the case of smart speakers, the script will also suggest the outcome with the check script.
+
+	---OUTCOME---
+	After this step, you will have a confirmation of the outcome of the blocker script, and you know what are essential and non-essential destinations.
+	The result will be located in the file:
+		$MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/$EXP_NAME/res-block-manual
+	
+--------------------------------------
+Step 7: [MANUAL] Blocking essential and non-essential lists.
+--------------------------------------
+
+	To still confirm the outcome of the blocker, we can block a list of destinations all together and manually test the destinations.
+	We will use the script in $IOTRIM_DIR/blocker_all.sh
+	The script will block all the destinations contained in the file: 
+		$MONIOTR_DIR/traffic/tagged/$DEVICE_NAME/blocked_all
+	
+	Update the blocked_all file with all the destinations you want to block. You can use # at the beginning to ignore the destination in the file.
+	
+	Step 7.1: [MANUAL] Blocking all NON-ESSENTIAL destinations
+		Use the list of all non-essential destinations previosly found and put it in the file blocked_all.
+		
+		---EXECUTION---
+		Place the terminal in the $IOTRIM_DIR dir (with cd command)
+	
+		You can call the script as follows:
+			sudo ./blocker_all.sh $EXP_FILENAME
+			
+		---OUTCOME---
+		If the list is correct, the device will WORK properly	
+
+	Step 7.2: [MANUAL] Blocking all ESSENTIAL destinations
+		Use the list of all essential destinations previosly found and put it in the file blocked_all.
+		
+		---EXECUTION---
+		Place the terminal in the $IOTRIM_DIR dir (with cd command)
+	
+		You can call the script as follows:
+			sudo ./blocker_all.sh $EXP_FILENAME
+			
+		---OUTCOME---
+		If the list is correct, the device will NOT WORK properly
+
+
+--------------------------------------
+Step 8: COLLECTING TRAFFIC
+--------------------------------------
+	The goal of this step is to set the script to periodically execute the activities while collecting the traffic.
+	In this way we can collect our dataset.
+	We will use the script $IOTRIM_DIR/trigger_all_devs.sh which periodically triggers the devices using the $IOTRIM_DIR/trigger_function.sh script
+	
+	---SETUP---
+	There is only need to create the experiment file (similar as the previous experiment file) to be placed in the $IOTRIM_DIR/experiments folder
+	As an example, check the file named $IOTRIM_DIR/experiments/trigger-all.
+	The file should contain one row for each device to trigger
+	Pay attention to the PHONE triggering the devices!
+	
+	WARNING: In some cases there is the need of having longer sleep times in the app, since some content needs to load.
+	In such case, adjust the sleep times in the experiment file, and if it is not enough, you can create specific rules for the device in the
+	$IOTRIM_DIR/trigger_function.sh file, as it is done in the example
+	
+	
+	---EXECUTION---
+	Call the execution script with the command:
+		sudo ./trigger_all_devs	$EXP_NAME $NUMBER_ITERATIONS $INTERVAL
+		specifying the experiment filename, the number of times to repeat the actions, and the interval between iterations.
+		
+	WARNING:
+		When you execute the script, all devices are plugged off and then back on before executing the first iteration.
+		You can simply edit the experiment file while the script is already running, for example to add new devices, without resetting the script.
+	
+	
+	
+	
+	
+	

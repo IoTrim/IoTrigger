@@ -1,0 +1,5 @@
+kasa-bulb;tapo-plug29;1;android_lan_onoff;170x170+350+440;nexus5x2;com.tplink.iot;external;10s;20s;tap 456 527;tap 456 527;tap 590 225;
+kasa-bulb;tapo-plug29;0;android_lan_brightness_min;950x140+63+1460;nexus5x2;com.tplink.iot;external;10s;20s;tap 290 590;tap 450 1530;tap 650 1530;tap 250 1530;tap 500 500
+kasa-bulb;tapo-plug29;0;android_lan_brightness_max;950x140+63+1460;nexus5x2;com.tplink.iot;external;10s;20s;tap 290 590;tap 450 1530;tap 450 1530;tap 850 1530;tap 500 500
+kasa-bulb;tapo-plug29;0;android_lan_color_min;950x230+63+1770;nexus5x2;com.tplink.iot;external;10s;20s;tap 290 590;tap 450 1930;tap 650 1930;tap 250 1930;tap 500 500
+kasa-bulb;tapo-plug29;0;android_lan_color_max;950x230+63+1770;nexus5x2;com.tplink.iot;external;10s;20s;tap 290 590;tap 450 1930;tap 650 1930;tap 850 1930;tap 500 500
