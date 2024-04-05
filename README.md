@@ -19,3 +19,5 @@ Each subdirectory shows samples for running the functionality, getting destinati
 - `blocker_all.sh` - Code for blocking all the destinations in a file. Useful for blocking all the essential/non-essential destinations and checking the IoTrim list correctness. 
 - `blocker_manual.sh` - Code guiding the user to the manual check of destinations. It blocks destinations one-by-one and asks the user to execute the action and give feedback on the result.
 - `trigger_function.sh` - Code using the experiment file to execute the activity. The activities are logged to a log file.
+
+The GUIDELINE.txt contains a full WALKTHROUGH on a how to set up a new device and use IoTrigger to extract the list of non-essential destinations from the new device.
